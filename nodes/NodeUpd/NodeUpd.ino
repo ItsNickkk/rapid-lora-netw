@@ -27,10 +27,8 @@ uint8_t routes[N_NODES]; // Array containing routing info
 int16_t rssi[N_NODES]; // Array containing RSSI (Received Signal Strength Indicator)
 char buf[RH_MESH_MAX_MESSAGE_LEN]; // Message Buffer
 const byte DNS_PORT = 53;
-
-const char* PARAM_INPUT_1 = "input1";
-const char* PARAM_INPUT_2 = "input2";
-const char* PARAM_INPUT_3 = "input3";
+const char* index_html = MAIN_page;
+const char *params[]={"name", "add", "hpno"};
 
 TaskHandle_t tskCaptive;
 TaskHandle_t tskLora;
@@ -40,43 +38,41 @@ AsyncWebServer server(80);
 RH_RF95 rf95; // Initializing RF95 driver
 RHMesh *manager; // Initialize Manager to handle messages
 
-const char index_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE HTML><html><head>
-  <title>ESP Input Form</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  </head><body>
-  <form action="/get">
-    input1: <input type="text" name="input1">
-    <input type="submit" value="Submit">
-  </form><br>
-  <form action="/get">
-    input2: <input type="text" name="input2">
-    <input type="submit" value="Submit">
-  </form><br>
-  <form action="/get">
-    input3: <input type="text" name="input3">
-    <input type="submit" value="Submit">
-  </form>
-</body></html>)rawliteral";
 
-void notFound(AsyncWebServerRequest *request) {
-  request->send(404, "text/plain", "Not found");
-}
+class CaptiveRequestHandler : public AsyncWebHandler {
+  public:
+    CaptiveRequestHandler() {
+      server.on("/get", HTTP_GET, [](AsyncWebServerRequest * request) {
+        char getBuf[RH_MESH_MAX_MESSAGE_LEN];
+        getBuf[0] = '\0';
+        strcat(getBuf, "{\"");
+        for(int i=0; i<sizeof(params)/sizeof(params[0]); i++){
+          if (request->hasParam(F(params[i]))) {
+            AsyncWebParameter* p = request->getParam(F(params[i]));
+            strcat(getBuf, p->name().c_str());
+            strcat(getBuf, "\":\"");
+            strcat(getBuf, p->value().c_str());
+            strcat(getBuf, "\",");
+          }
+        }
+        byte getBufLen = strlen(getBuf)-1;
+        getBuf[getBufLen] = '}';
+        Serial.println(getBuf);
+      });
+    }
+    virtual ~CaptiveRequestHandler() {}
 
-int freeMem() { // clear memory
-  return ESP.getFreeHeap();
-}
+    bool canHandle(AsyncWebServerRequest *request) {
+      //request->addInterestingHeader("ANY");
+      return true;
+    }
+
+    void handleRequest(AsyncWebServerRequest *request) {
+      request->send_P(200, "text/html", index_html);
+    }
+};
 
 void setup() {
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP("ESP32-DNSServer");
-  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-
-  // if DNSServer is started with "*" for domain name, it will reply with
-  // provided IP to all DNS request
-  dnsServer.start(DNS_PORT, "*", apIP);
-
-  server.begin();
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
   nodeID = EEPROM.read(0);// Read node ID from EEPROM address 0, which is placed in using initNode.ino
@@ -250,73 +246,18 @@ void routeDiscover() {
 
 
 void tskCaptiveCode( void * pvParameters ) {
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/html", index_html);
-  });
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("jgn konek pls wifi ni xleh pakai");
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
-  // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
-  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest * request) {
-    String inputMessage;
-    String inputParam;
-    // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
-    if (request->hasParam(PARAM_INPUT_1)) {
-      inputMessage = request->getParam(PARAM_INPUT_1)->value();
-      inputParam = PARAM_INPUT_1;
-    }
-    // GET input2 value on <ESP_IP>/get?input2=<inputMessage>
-    else if (request->hasParam(PARAM_INPUT_2)) {
-      inputMessage = request->getParam(PARAM_INPUT_2)->value();
-      inputParam = PARAM_INPUT_2;
-    }
-    // GET input3 value on <ESP_IP>/get?input3=<inputMessage>
-    else if (request->hasParam(PARAM_INPUT_3)) {
-      inputMessage = request->getParam(PARAM_INPUT_3)->value();
-      inputParam = PARAM_INPUT_3;
-    }
-    else {
-      inputMessage = "No message sent";
-      inputParam = "none";
-    }
-    Serial.println(inputMessage);
-    request->send(200, "text/html", "HTTP GET request sent to your ESP on input field ("
-                  + inputParam + ") with value: " + inputMessage +
-                  "<br><a href=\"/\">Return to Home Page</a>");
-  });
-  server.onNotFound(notFound);
+  dnsServer.start(53, "*", apIP);
+  server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
   server.begin();
   for (;;) {
     TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
     TIMERG0.wdt_feed = 1;
     TIMERG0.wdt_wprotect = 0;
     dnsServer.processNextRequest();
-    Serial.println("a");
-    //    WiFiClient client = server.available();   // listen for incoming clients
-    //
-    //    if (client) {
-    //      String currentLine = "";
-    //      while (client.connected()) {
-    //        if (client.available()) {
-    //          char c = client.read();
-    //          if (c == '\n') {
-    //            if (currentLine.length() == 0) {
-    //              client.println("HTTP/1.1 200 OK");
-    //              client.println("Content-type:text/html");
-    //              client.println();
-    //              client.print(responseHTML);
-    //              break;
-    //            }
-    //            else {
-    //              currentLine = "";
-    //            }
-    //          }
-    //          else if (c != '\r') {
-    //            currentLine += c;
-    //            Serial.print("currentLine:");
-    //            Serial.println(currentLine);
-    //          }
-    //        }
-    //      }
-    //      client.stop();
   }
 
 }
