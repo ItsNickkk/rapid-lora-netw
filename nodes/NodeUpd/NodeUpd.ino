@@ -5,81 +5,107 @@
 #include <RHMesh.h>
 #include <RH_RF95.h>
 #include <WiFi.h>
+#include <SPIFFS.h>
 #include <DNSServer.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "soc/timer_group_struct.h"
 #include "soc/timer_group_reg.h"
-#include "mainpage.h"
 
 #define RH_HAVE_SERIAL
 #define EEPROM_SIZE 1
-#define RH_TEST_NETWORK 3
-// Line above can simulate condition where two of the nodes (address 2 & address 3) does not directly communicate with each other
-// This network looks like 1-2-4
-//                         |   |
-//                         --3--
-
 #define N_NODES 4 //Change the number of nodes in this variable
 
+const char *params[] = {"n", "add", "hp", "cnt", "dg", "wt", "fd", "hg"};
+//change the parameters based on what is sent from HTML form
+//Keep the parameter names as short as possible and take note of LoRa max packet size!
+const size_t FORM_PARAM_SIZE = sizeof(params) / sizeof(params[0]);
 uint8_t nodeID;
 uint8_t routes[N_NODES]; // Array containing routing info
 int16_t rssi[N_NODES]; // Array containing RSSI (Received Signal Strength Indicator)
 char buf[RH_MESH_MAX_MESSAGE_LEN]; // Message Buffer
 const byte DNS_PORT = 53;
-
-const char* PARAM_INPUT_1 = "input1";
-const char* PARAM_INPUT_2 = "input2";
-const char* PARAM_INPUT_3 = "input3";
+//const char* index_html = MAIN_page;
 
 TaskHandle_t tskCaptive;
 TaskHandle_t tskLora;
+QueueHandle_t queue1;
 IPAddress apIP(172, 217, 28, 1); // The default android DNS
 DNSServer dnsServer;
 AsyncWebServer server(80);
 RH_RF95 rf95; // Initializing RF95 driver
 RHMesh *manager; // Initialize Manager to handle messages
 
-const char index_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE HTML><html><head>
-  <title>ESP Input Form</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  </head><body>
-  <form action="/get">
-    input1: <input type="text" name="input1">
-    <input type="submit" value="Submit">
-  </form><br>
-  <form action="/get">
-    input2: <input type="text" name="input2">
-    <input type="submit" value="Submit">
-  </form><br>
-  <form action="/get">
-    input3: <input type="text" name="input3">
-    <input type="submit" value="Submit">
-  </form>
-</body></html>)rawliteral";
 
-void notFound(AsyncWebServerRequest *request) {
-  request->send(404, "text/plain", "Not found");
-}
+class CaptiveRequestHandler : public AsyncWebHandler {
+  public:
+    CaptiveRequestHandler() {
+      server.on("/get", HTTP_GET, [](AsyncWebServerRequest * request) {
+        if (request -> params() > 0) {
+          char getBuf[RH_MESH_MAX_MESSAGE_LEN];
+          getBuf[0] = '\0';
+          strcat(getBuf, "{\"");
+          for (int i = 0; i < FORM_PARAM_SIZE; i++) {
+            if (request->hasParam(F(params[i]))) {
+              AsyncWebParameter* p = request->getParam(F(params[i]));
+              strcat(getBuf, p->name().c_str());
+              strcat(getBuf, "\":\"");
+              strcat(getBuf, p->value().c_str());
+              strcat(getBuf, "\",");
+            }
+          }
+          strcat(getBuf, "\"node\":");
+          sprintf(getBuf + strlen(getBuf), "%d", nodeID);
+          strcat(getBuf, "}");
+          Serial.println(getBuf);
+          AsyncResponseStream *response = request->beginResponseStream("text/html");
+          response->print("<!DOCTYPE html><html><head><title>Unauthorized Access</title></head><body>");
+          response->print("<h1>Message successfully sent to base station! </h1>");
+          response->print("<p>If you wish to update your condition, please disconnect and reconnect to this access point and resubmit the form!");
+          response->print("</body></html>");
+          request->send(response);
+        }
+        else {
+          AsyncResponseStream *response = request->beginResponseStream("text/html");
+          response->print("<!DOCTYPE html><html><head><title>Unauthorized Access</title></head><body>");
+          response->print("<h1>Unauthorized Access</h1>");
+          response->print("</body></html>");
+          request->send(response);
+        }
+      });
+      server.on("/src/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+        request->send(SPIFFS, "/src/bootstrap.bundle.min.js", "text/javascript");
+      });
 
-int freeMem() { // clear memory
-  return ESP.getFreeHeap();
-}
+      server.on("/src/jquery-3.3.1.min.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+        request->send(SPIFFS, "/src/jquery-3.3.1.min.js", "text/javascript");
+      });
+
+      server.on("/src/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+        request->send(SPIFFS, "/src/bootstrap.min.css", "text/css");
+      });
+    }
+    virtual ~CaptiveRequestHandler() {}
+
+    bool canHandle(AsyncWebServerRequest *request) {
+      return true;
+    }
+
+    void handleRequest(AsyncWebServerRequest *request) {
+      //request->send_P(200, "text/html", index_html);
+      request->send(SPIFFS, "/index.html", "text/html");
+    }
+};
 
 void setup() {
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP("ESP32-DNSServer");
-  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-
-  // if DNSServer is started with "*" for domain name, it will reply with
-  // provided IP to all DNS request
-  dnsServer.start(DNS_PORT, "*", apIP);
-
-  server.begin();
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
   nodeID = EEPROM.read(0);// Read node ID from EEPROM address 0, which is placed in using initNode.ino
+  if (!SPIFFS.begin()) {
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+
   Serial.print(F("Initialing Node with ID: "));
   Serial.println(nodeID);
 
@@ -102,22 +128,9 @@ void setup() {
     rssi[n] = 0;
   }
   routeDiscover();
-  xTaskCreatePinnedToCore(
-    tskCaptiveCode, /* Task function. */
-    "Captive Portal",   /* name of task. */
-    10000,     /* Stack size of task */
-    NULL,      /* parameter of the task */
-    1,         /* priority of the task */
-    &tskCaptive,    /* Task handle to keep track of created task */
-    0);        /* pin task to core 0 */
-  xTaskCreatePinnedToCore(
-    tskLoraCode,  /* Task function. */
-    "LoRa comm",    /* name of task. */
-    10000,      /* Stack size of task */
-    NULL,       /* parameter of the task */
-    1,          /* priority of the task */
-    &tskLora,     /* Task handle to keep track of created task */
-    1);         /* pin task to core 0 */
+
+  xTaskCreatePinnedToCore(tskCaptiveCode, "Captive Portal", 10000, NULL, 1, &tskCaptive,1);
+  xTaskCreatePinnedToCore(tskLoraCode, "LoRa comm", 10000, NULL, 1, &tskLora, 0);
 }
 
 const __FlashStringHelper* getErrorString(uint8_t error) {
@@ -250,73 +263,18 @@ void routeDiscover() {
 
 
 void tskCaptiveCode( void * pvParameters ) {
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/html", index_html);
-  });
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("jgn konek pls wifi ni xleh pakai");
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
-  // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
-  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest * request) {
-    String inputMessage;
-    String inputParam;
-    // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
-    if (request->hasParam(PARAM_INPUT_1)) {
-      inputMessage = request->getParam(PARAM_INPUT_1)->value();
-      inputParam = PARAM_INPUT_1;
-    }
-    // GET input2 value on <ESP_IP>/get?input2=<inputMessage>
-    else if (request->hasParam(PARAM_INPUT_2)) {
-      inputMessage = request->getParam(PARAM_INPUT_2)->value();
-      inputParam = PARAM_INPUT_2;
-    }
-    // GET input3 value on <ESP_IP>/get?input3=<inputMessage>
-    else if (request->hasParam(PARAM_INPUT_3)) {
-      inputMessage = request->getParam(PARAM_INPUT_3)->value();
-      inputParam = PARAM_INPUT_3;
-    }
-    else {
-      inputMessage = "No message sent";
-      inputParam = "none";
-    }
-    Serial.println(inputMessage);
-    request->send(200, "text/html", "HTTP GET request sent to your ESP on input field ("
-                  + inputParam + ") with value: " + inputMessage +
-                  "<br><a href=\"/\">Return to Home Page</a>");
-  });
-  server.onNotFound(notFound);
+  dnsServer.start(53, "*", apIP);
+  server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
   server.begin();
   for (;;) {
     TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
     TIMERG0.wdt_feed = 1;
     TIMERG0.wdt_wprotect = 0;
     dnsServer.processNextRequest();
-    Serial.println("a");
-    //    WiFiClient client = server.available();   // listen for incoming clients
-    //
-    //    if (client) {
-    //      String currentLine = "";
-    //      while (client.connected()) {
-    //        if (client.available()) {
-    //          char c = client.read();
-    //          if (c == '\n') {
-    //            if (currentLine.length() == 0) {
-    //              client.println("HTTP/1.1 200 OK");
-    //              client.println("Content-type:text/html");
-    //              client.println();
-    //              client.print(responseHTML);
-    //              break;
-    //            }
-    //            else {
-    //              currentLine = "";
-    //            }
-    //          }
-    //          else if (c != '\r') {
-    //            currentLine += c;
-    //            Serial.print("currentLine:");
-    //            Serial.println(currentLine);
-    //          }
-    //        }
-    //      }
-    //      client.stop();
   }
 
 }
@@ -335,7 +293,6 @@ void tskLoraCode( void * pvParameters ) {
       buildbuf(buf, RH_MESH_MAX_MESSAGE_LEN);
       uint8_t error = manager->sendtoWait((uint8_t *)buf, strlen(buf), 1);
       Serial.println(error);
-
     }
   }
 }
