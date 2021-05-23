@@ -11,7 +11,8 @@ BSc (Hons) in Information Technology with a specialism in Internet of Things (Io
 - AsyncTCP for ESP32 (https://github.com/me-no-dev/AsyncTCP)
 - ESPAsyncWebServer (https://github.com/me-no-dev/ESPAsyncWebServer)
 ### Gateway
-- null
+- Mosquitto (built-in in RPi)
+
 ### Web Server
 - paho-mqtt v1.5.1 (https://github.com/eclipse/paho.mqtt.python)
 - Django v3.2
