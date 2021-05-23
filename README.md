@@ -8,6 +8,8 @@ BSc (Hons) in Information Technology with a specialism in Internet of Things (Io
 ## External Library/Framework Used
 ### Nodes
 - Radiohead v1.116 (https://github.com/adafruit/RadioHead)
+- AsyncTCP for ESP32 (https://github.com/me-no-dev/AsyncTCP)
+- ESPAsyncWebServer (https://github.com/me-no-dev/ESPAsyncWebServer)
 ### Gateway
 - null
 ### Web Server
