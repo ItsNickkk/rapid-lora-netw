@@ -2,11 +2,14 @@
 #define EEPROM_SIZE 1
 #define EEPROM_ADDR 0
 
-uint8_t id = 1; //Insert ID of the node here
+uint8_t id = 4; //Insert ID of the node here
 
 void setup() {
     //Initializing Serial & EEPROM
     Serial.begin(115200);
+    while (!Serial) {
+    ;
+    }
     EEPROM.begin(EEPROM_SIZE);
     
     //Assign Node ID to EEPROM address 0

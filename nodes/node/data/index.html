@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Emergency Portal</title>
+		<script src="src/jquery-3.3.1.min.js"></script>
+    	<script src="src/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="src/bootstrap.min.css">
+    </head>
+    <body>
+		<div class="header">Emergency Portal</div>
+		<div id="content">
+			<form method="get" action="/get">
+				<h2>My Information</h2>
+				<input type="text" placeholder="Name" name="n" maxlength="20"/><br/>
+				<input type="text" placeholder="Short Address" name="add" maxlength="40"/><br/>
+				<input type="text" placeholder="Phone Number" name="hp" maxlength="12"/><br/>
+				<input type="number" placeholder="Number of occupants (incld. pets)" name="cnt" maxlength="2"/><br/>
+
+				<h2>Current Status</h2>
+				<input type="checkbox" name="dg" value="1" id="rad-dan">
+				<label for="rad-dan">I am in immediate danger</label><br>
+
+				<h2>I need:</h2>
+				<input type="checkbox" name="fa" value="1" id="need-fa">
+				<label for="need-fa">First Aid</label><br>
+
+				<input type="checkbox" name="wt" value="1" id="need-wat">
+				<label for="need-wat">Water</label><br>	
+
+				<input type="checkbox" name="fd" value="1" id="need-food">
+				<label for="need-food">Food</label><br>	
+
+				<input type="checkbox" name="hg" value="1" id="need-hug">
+				<label for="need-hug">Hug</label><br>	
+
+				<button type="submit" value="submit" class="btn btn-primary">Submit Form</button>
+			</form>
+		</div>
+    </body>
+</html>
