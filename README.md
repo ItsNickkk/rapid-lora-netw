@@ -17,6 +17,8 @@ BSc (Hons) in Information Technology with a specialism in Internet of Things (Io
 - paho-mqtt v1.5.1 (https://github.com/eclipse/paho.mqtt.python)
 - Django v3.2
 - Leaflet.js (https://leafletjs.com/)
+- Bootstrap CSS
+- jQuery
 ### Others
 - Arduino ESP32 filesystem uploader (https://github.com/me-no-dev/arduino-esp32fs-plugin)
     - Plugin for Arduino IDE to flash files into SPIFFS of ESP32
