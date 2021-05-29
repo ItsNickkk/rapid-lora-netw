@@ -2,12 +2,85 @@
 {% load static %}
 
 {% block content %}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col offset-lg-1 m-3">
+			<h1>Node Management</h1>
+		</div>
+	</div>
+</div>
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-lg-7 p-0">
+			<div id="mapid"></div>
+		</div>
+		<div class="col-lg p-3">
+			<p class="text-muted"><i class="fas fa-info-circle"></i> Click anywhere on the map to add a new node.</p>
+			<p class="text-muted"><i class="fas fa-info-circle"></i> Click on the circles to edit/delete nodes.</p>
+			<h2 id="form-h">Add a new Node</h2>
+			<fieldset>
+				<div class="form-group">
+					<label for="txtNodeID" class="form-label">Node ID:</label>
+					<input type="text" id="txtNodeID" class="form-control" name="id" readonly/>
+					<span class="invalid-feedback d-none emp">This field cannot be empty!</span>
+				</div>
+				<div class="form-group mt-4">
+					<label for="txtNodeLon" class="form-label">Node Longitude:</label>
+					<input type="number" id="txtNodeLon" class="form-control" name="lon" onkeypress="return isNumber(event)"/>
+					<span class="invalid-feedback d-none emp">This field cannot be empty!</span>
+					<span class="invalid-feedback d-none num">Only number is allowed in this field!</span>
+				</div>
+				<div class="form-group mt-4">
+					<label for="txtNodeLat" class="form-label">Node Latitude:</label>
+					<input type="number" id="txtNodeLat" class="form-control" name="lat" onkeypress="return isNumber(event)"/>
+					<span class="invalid-feedback d-none emp">This field cannot be empty!</span>
+					<span class="invalid-feedback d-none num">Only number is allowed in this field!</span>
+				</div>
+				<div class="form-group mt-4">
+					<label for="txtNodeDesc" class="form-label">Node Description:</label>
+					<input type="text" id="txtNodeDesc" class="form-control" maxlength="20" name="desc"/>
+					<span class="invalid-feedback d-none emp">This field cannot be empty!</span>
+				</div>
+				<div class="form-group mt-4">
+					<label for="selNodeStat" class="form-label">Node Status:</label>
+					<select class="form-control" id="selNodeStat" name="stat">
+						<option value="null" disabled></option>
+						{% for s in node_status %}
+							<option value="{{s.id}}">{{s.status}}</option>
+						{% endfor %}
+					</select>
+				</div>
+			</fieldset>
+			<div class="mt-4 text-xl-right">
+				<button class="btn btn-danger mr-2 d-none" id="btnDisable">Disable</button>
+				<button class="btn btn-primary d-none" id="btnSubmit" onclick>Add Node</button>
+				<button class="btn btn-info mx-2 d-none" id="btnUpdate" onclick>Update</button>
+				<span class="d-none text-danger" id="lblError"></span>
+			</div>
+		</div>
+	</div>
+</div>
 
-<div id="mapid"></div>
+<div class="notif">
+	<div class="alert alert-dismissible alert-danger fade rounded d-none" id="errorToast">
+		<div class="loading" style="background-color: #FF775C;"></div>
+		<button type="button" class="btn-close" data-dismiss="alert"></button>
+		<strong>Error!</strong> <span class="msg"></span>
+	</div>
+	<div class="alert alert-dismissible alert-success fade rounded  d-none" id="successToast">
+		<div class="loading" style="background-color: #7FFF7F;"></div>
+		<button type="button" class="btn-close" data-dismiss="alert"></button>
+		<strong>Success!</strong> <span class="msg"></span>
+	</div>
+</div>
+
+
 
 <script>
 
-
+	var popup = L.popup();
+	var clickCircle = [];
+	var unregCircle = false;
 	var mymap = L.map('mapid').setView([3.146450, 101.711250], 13);
 
 	L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
@@ -18,32 +91,239 @@
 		tileSize: 512,
 		zoomOffset: -1
 	}).addTo(mymap);
-	var popup = L.popup();
-	var clickCircle = [];
+	
 	function onMapClick(e) {
-		
+		$("#form-h").text("Add a new Node");
+		$("#btnUpdate").addClass("d-none");
+		$("#btnDisable").addClass("d-none");
+		$("#btnSubmit").removeClass("d-none");
+		$.ajax({
+			type: "GET",
+			url: "nodes/api/manageNode",
+			dataType:'json',
+			data:{
+				"latest_id": ""
+			},
+			success: function(data){     
+				id = data['data'][0]['latest_id']+1;
+				len = clickCircle.length;
+				lat = e.latlng.lat;
+				lng = e.latlng.lng;
+				if(!unregCircle){
+					createCircle(lat, lng, id);
+					unregCircle = true;
+				}
+				else{
+					mymap.removeLayer(clickCircle[len-1]);
+					clickCircle.pop();
+					createCircle(lat, lng, id);
+				}
+				popup
+					.setLatLng(e.latlng)
+					.setContent("Add a node here")
+					.openOn(mymap);
+				setFields(id, lng, lat, "",1);
+			}     
+		});
+	}
+
+	function createCircle(lat, lng, node_id){
 		len = clickCircle.length;
-		clickCircle[len+1] = L.circle(e.latlng,200,{
+		clickCircle[len] = L.circle([lat, lng],200,{
 			color: '#f07300',
 			fillOpacity: 0.5,
 			opacity: 0.5,
-			id: Math.floor(Math.random() * 10),
-
+			id: node_id,
 		}).addTo(mymap);
-		popup
-			.setLatLng(e.latlng)
-			.setContent("You clicked the map at " + clickCircle[len+1].options.id)
-			.openOn(mymap);
-		clickCircle[len+1].addEventListener('click', onCircleClick);
+		for(i = 0; i<=len; i++){
+			clickCircle[i].addEventListener('click', onCircleClick);
+			clickCircle[i].addEventListener('mousedown', moveCircle);
+		}
 	}
 
 	function onCircleClick(e){
 		L.DomEvent.stopPropagation(e);
+		$("#form-h").text("Edit a Node");
+		$("#btnUpdate").removeClass("d-none");
+		$("#btnDisable").removeClass("d-none");
+		$("#btnSubmit").addClass("d-none");
+		if(unregCircle){
+			mymap.removeLayer(clickCircle[len]);
+			clickCircle.pop();
+			unregCircle = false;
+		}
 		var clickedCircle = e.target;
-		alert(clickedCircle.options.id);
+		$.ajax({
+			type: "GET",
+			url: "nodes/api/manageNode",
+			dataType:'json',
+			data:{
+				"node_id": clickedCircle.options.id
+			},
+			success: function(data){     
+				json = data['data'][0];
+				if(json['status']){
+					$('#lblError').text("Invalid Node ID!");
+					$('#lblError').removeClass("d-none");
+				}
+				else{
+					id = json['id'];
+					lon = json['lon'];
+					lat = json['lat'];
+					dsc = json['dsc'];
+					stat = json['stat'];
+					setFields(id, lon, lat, dsc, stat);
+				}
+			}     
+		});
+		
 	}
 
-	mymap.on('click', onMapClick);
+	function moveCircle(e) {
+		targetCircle = e.target;
+        mymap.on('mousemove', function () {
+        	targetCircle.setLatLng(e.latlng);
+        });
+    }; 
+	
+	function setFields(id, lon, lat, desc, status){
+		$('#txtNodeID').val(id);
+		$('#txtNodeLon').val(lon);
+		$('#txtNodeLat').val(lat);
+		$('#txtNodeDesc').val(desc);
+		$('#selNodeStat').val(status);
+	}
+	
+	function submitNodeForm(method){
+		if(!validateInput()){
+			return
+		}
+		id = $('#txtNodeID').val();
+		lon = $('#txtNodeLon').val();
+		lat = $('#txtNodeLat').val();
+		desc = $('#txtNodeDesc').val();
+		sel = $('#selNodeStat option:selected').val();
+		if(method == 1){
+			type = "POST"
+		}
+		else if(method == 2){
+			type = "PATCH"
+		}
+		$.ajax({
+			headers: {
+				'X-CSRFTOKEN': '{{ csrf_token }}'
+			},
+			type: type,
+			url: "nodes/api/manageNode",
+			dataType:'json',
+			data: {
+				"id": id,
+				"lon": lon,
+				"lat": lat,
+				"desc": desc,
+				"stat": sel
+			},
+			success: function(data){     
+				json = data['data'][0];
+				if(json['status']==1){
+					showAlert(1, "Node successfully registered.")
+				}
+			}     
+		});
+	}
+
+	function validateInput(){
+		var pass = true;
+		txtfields = [$("#txtNodeID"), $("#txtNodeLon"), $("#txtNodeLat"), $("#txtNodeDesc")];
+		txtfields.forEach(function(item, index){
+			if(item.val().length===0){
+				item.addClass("is-invalid");
+				item.parent().addClass("has-danger");
+				item.siblings(".emp").removeClass("d-none");
+				pass = false;
+			}
+			if(item.is("onkeypress")){
+				if(!item.val().isNumeric()){
+					item.siblings(".emp").removeClass("d-none");
+					pass=false;
+				}
+			}
+		});
+		if(!pass){
+			showAlert(2, "Please check your input!")
+		}
+		return pass;
+	}
+
+	function isNumber(evt) {
+		evt = (evt) ? evt : window.event;
+		var charCode = (evt.which) ? evt.which : evt.keyCode;
+		if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+			return false;
+		}
+		return true;
+	}
+	function loading(elem) {
+		var i = 0;
+		if (i == 0) {
+			i = 1;
+			var width = 1;
+			var id = setInterval(function(){
+				width++;
+				$('.loading').css("width", width+"%");
+				if(width >= 100){
+					clearInterval(id);
+					i=0;
+				}
+			}, 15);
+		}
+	}
+
+	function showAlert(type, message){
+		if(type==1){
+			elem = $('#successToast');
+		}
+		else{
+			elem = $('#errorToast');
+		}
+		elem.addClass("show");
+		elem.removeClass("d-none");
+		bar = elem.children(".loading");
+		elem.children(".msg").html(message);
+		loading(bar);
+		setTimeout(function(){
+			elem.removeClass("show");
+			elem.removeClass("d-none");
+		}, 2000);
+	}
+
+	$(document).ready(function(){
+		$.ajax({
+			type: "GET",
+			url: "nodes/api/manageNode",
+			dataType:'json',
+			success: function(data){     
+				arr = data['data']
+				arr.forEach(function(item, index){
+					var lat = item['lat'];
+					var lon = item['lon'];
+					var id = item['id'];
+					createCircle(lat, lon, id);
+				});
+			}     
+		});
+		setFields("","","","","null");
+		mymap.on('mouseup',function(e){
+			mymap.removeEventListener('mousemove');
+		})
+		mymap.on('click', onMapClick);
+		$("#btnSubmit").click(function(){
+			submitNodeForm(1);
+		})
+		$("#btnUpdate").click(function(){
+			submitNodeForm(2);
+		})
+	});
 
 </script>
 {% endblock content %}

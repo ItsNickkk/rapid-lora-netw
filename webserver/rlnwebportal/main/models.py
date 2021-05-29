@@ -3,11 +3,12 @@ from django.db.models.fields import CharField
 from django.db.models.fields.related import ForeignKey
 
 class dim_node_status(models.Model):
-    status = models.CharField(max_length=20)
+    status = models.CharField(max_length=50)
 
 class dim_node(models.Model):
     node_lat = models.FloatField()
     node_lon = models.FloatField()
+    node_desc = models.CharField(max_length=20) #Short Description of the Node
     node_status = models.ForeignKey(dim_node_status, on_delete=models.CASCADE)
 
 class dim_entry_status(models.Model):
