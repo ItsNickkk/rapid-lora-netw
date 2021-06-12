@@ -1,40 +1,88 @@
 <!DOCTYPE html>
 <html>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
     <head>
         <title>Emergency Portal</title>
 		<script src="src/jquery-3.3.1.min.js"></script>
     	<script src="src/bootstrap.bundle.min.js"></script>
         <link rel="stylesheet" type="text/css" href="src/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="src/main.css">
     </head>
     <body>
-		<div class="header">Emergency Portal</div>
-		<div id="content">
-			<form method="get" action="/get">
-				<h2>My Information</h2>
-				<input type="text" placeholder="Name" name="n" maxlength="30"/><br/>
-				<input type="text" placeholder="Short Address" name="add" maxlength="100"/><br/>
-				<input type="text" placeholder="Phone Number" name="hp" maxlength="12"/><br/>
-				<input type="number" placeholder="Number of occupants (incld. pets)" name="cnt" max="99" min="0"/><br/>
-
-				<h2>Current Status</h2>
-				<input type="checkbox" name="dg" value="1" id="rad-dan">
-				<label for="rad-dan">I am in immediate danger</label><br>
-
-				<h2>I need:</h2>
-				<input type="checkbox" name="fa" value="1" id="need-fa">
-				<label for="need-fa">First Aid</label><br>
-
-				<input type="checkbox" name="wt" value="1" id="need-wat">
-				<label for="need-wat">Water</label><br>	
-
-				<input type="checkbox" name="fd" value="1" id="need-food">
-				<label for="need-food">Food</label><br>	
-
-				<input type="checkbox" name="hg" value="1" id="need-hug">
-				<label for="need-hug">Hug</label><br>	
-
-				<button type="submit" value="submit" class="btn btn-primary">Submit Form</button>
-			</form>
+		<div class="container-fluid" style="background-color: rgba(13, 7, 50, 0.5); border-radius: 20px; ">
+			<div class="row" style="border-bottom: 2px solid #333333; margin-left: 2%; margin-right:2%">
+				<div class="col-lg-10 offset-lg-1 py-3">
+					<h1 class="text-center">Emergency Portal</h1>
+					<h5 class="text-center">Temporary communication infrastructure powered by LoRa</h5>
+				</div>
+			</div>
+			<div class="row pb-5">
+				<div class="col-10 offset-lg-1 px-3">
+					<form method="get" action="/get">
+						<div class="py-4">
+							<span class="text-muted"><span style="color: #059862; font-size: large;">*</span> - All the fields in this section are required</span>
+							<h2>My Information *</h2>
+							<div class="form-group pt-3">
+								<fieldset>
+									<label class="form-label" for="txtName">Name</label><br/>
+									<input type="text" placeholder="e.g. Danial Ariff" name="n" maxlength="30" id="txtName" required/>
+								</fieldset>
+							</div>
+							<div class="form-group pt-2">
+								<fieldset>
+									<label class="form-label" for="txtAdd">Short Address</label><br/>
+									<input type="text" placeholder="e.g. 1, Jalan Rockstar 3" name="add" maxlength="100" id="txtAdd" required/>
+								</fieldset>
+							</div>
+							<div class="form-group pt-2">
+								<fieldset>
+									<label class="form-label" for="txthp">Phone Number</label><br/>
+									<input type="text" placeholder="e.g. 012374895" name="hp" maxlength="12" id="txthp" required/>
+								</fieldset>
+							</div>
+							<div class="form-group pt-2">
+								<fieldset>
+									<label class="form-label" for="txtOccu">Number of Occupants</label><br/>
+									<input type="number" placeholder="Number of occupants (incld. pets)" name="cnt" max="99" min="0" id="txtOccu" required/><br/>
+								</fieldset>
+							</div>
+						</div>
+						<div style="border-bottom: 2px solid #333333" class="py-4">
+							<h2>Current Status</h2>
+							<div class="form-check pt-3">
+								<input type="checkbox" name="dg" value="1" class="form-check-input" id="rad-dan">
+								<label class="form-check-label pl-3">I am in immediate danger</label>
+							</div>
+						</div>
+						<div style="border-bottom: 2px solid #333333" class="py-4">
+							<h2>I need</h2>
+							<div class="form-check pt-3">
+								<input type="checkbox" name="fa" class="form-check-input" value="1" id="need-fa">
+								<label class="form-check-label pl-3">First Aid</label>
+							</div>
+							<div class="form-check pt-4">
+								<input type="checkbox" name="wt" class="form-check-input" value="1" id="need-wat">
+								<label class="form-check-label pl-3">Water</label>
+							</div>
+							<div class="form-check pt-4">
+								<input type="checkbox" name="fd" class="form-check-input" value="1" id="need-food">
+								<label class="form-check-label pl-3">Food</label>
+							</div>
+							<div class="form-check pt-4">
+								<input type="checkbox" name="hg" class="form-check-input" value="1" id="need-hug">
+								<label class="form-check-label pl-3">Hug</label>
+							</div>
+						</div>
+						<button type="submit" value="submit" class="btn btn-primary mt-5" id="btnSubmit">Submit Form</button>
+					</form>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col text-center pb-5">
+					<span class="text-muted">Project Temporary mobile ad hoc network infrastructure for rapid deployment during disaster relief</span><br/>
+					
+				</div>
+			</div>
 		</div>
     </body>
 </html>

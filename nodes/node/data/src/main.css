@@ -1,0 +1,62 @@
+body{
+    color: white;
+    background-image: url("../static/bg.svg");
+    background-repeat: no-repeat;
+    background-size:100% 100%;
+    padding: 5% 10% 2% 10%;
+}
+
+h1, h2{
+    color: #3CB64C;
+}
+
+input{
+    background-color: transparent;
+    outline: 0;
+    border-width: 0 0 2px;
+    border-color: grey;
+    color: white;
+    padding: 5px;
+    width: 100%
+}
+
+input:focus{
+    border-color: #059862;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+#btnSubmit{
+    background-color: #059862 !important;
+    border-color: #059862 !important;
+}
+
+#btnSubmit:hover{
+    border-color: #036541 !important;
+    background-color: #036541 !important;
+}
+
+input[type=checkbox] {
+    width: 1.3em;
+    height: 1.3em;
+    background-color: transparent;
+    border-radius: 50%;
+    vertical-align: middle;
+    border: 2px solid white;
+    -webkit-appearance: none;
+    outline: white;
+    cursor: pointer;
+}
+
+input[type=checkbox]:checked{
+    border: 2px solid white;
+    background-color: #059862;
+}
