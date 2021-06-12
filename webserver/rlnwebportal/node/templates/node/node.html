@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container-fluid">
 	<div class="row">
-		<div class="col offset-lg-1 m-3">
+		<div class="col-10 m-3">
 			<h1>Node Management</h1>
 		</div>
 	</div>
@@ -17,7 +17,7 @@
 		<div class="col-lg p-3">
 			<p class="text-muted"><i class="fas fa-info-circle"></i> Click anywhere on the map to add a new node.</p>
 			<p class="text-muted"><i class="fas fa-info-circle"></i> Click on the circles to edit/delete nodes.</p>
-			<h2 id="form-h">Add a new Node</h2>
+			<h2 id="form-h">Perform an action to start</h2>
 			<fieldset>
 				<div class="form-group">
 					<label for="txtNodeID" class="form-label">Node ID:</label>
@@ -44,7 +44,7 @@
 				<div class="form-group mt-4">
 					<label for="selNodeStat" class="form-label">Node Status:</label>
 					<select class="form-control" id="selNodeStat" name="stat">
-						<option value="null" disabled></option>
+						<option value="null" class="d-none" disabled></option>
 						{% for s in node_status %}
 							<option value="{{s.id}}">{{s.status}}</option>
 						{% endfor %}
@@ -52,22 +52,69 @@
 				</div>
 			</fieldset>
 			<div class="mt-4 text-xl-right">
-				<button class="btn btn-danger mr-2 d-none" id="btnDisable">Disable</button>
-				<button class="btn btn-primary d-none" id="btnSubmit" onclick>Add Node</button>
-				<button class="btn btn-info mx-2 d-none" id="btnUpdate" onclick>Update</button>
-				<span class="d-none text-danger" id="lblError"></span>
+				<div class="row">
+					<div class="col-9">
+						<button class="btn btn-danger mr-2 d-none" id="btnDisable">Disable</button>
+						<button class="btn btn-primary d-none" id="btnSubmit" onclick>Add Node</button>
+						<button class="btn btn-info mx-2 d-none" id="btnUpdate" onclick>Update</button>
+					</div>
+					<div class="col">
+						<button type="button" class="btn btn-primary justify-content-end p-2"  data-toggle="modal" data-target="#disabledNodeModal">View disabled Nodes</button>
+						
+						<div class="modal fade" id="disabledNodeModal" tabindex="-1" role="dialog">
+							<div class="modal-dialog modal-xl" role="document">
+								<div class="modal-content">
+									<div class="modal-header">
+									<h5 class="modal-title">Disabled Nodes</h5>
+									<button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">
+										<span aria-hidden="true"></span>
+									</button>
+									</div>
+									<div class="modal-body">
+										<table class="table table-hover" id="disabledNodeTable">
+											<thead>
+												<tr>
+													<th scope="col" class="text-center">Node ID</th>
+													<th scope="col" class="text-center">Node Desc</th>
+													<th scope="col" class="text-center">Node Lat</th>
+													<th scope="col" class="text-center">Node Lon</th>
+													<th scope="col" class="text-center">Action</th>
+												</tr>
+											</thead>
+											<tbody>
+												<!-- <tr>
+													<td class="text-center align-middle disabled-node-id">1</td>
+													<td class="text-center align-middle">dasd</td>
+													<td class="text-center align-middle">3212313213123</td>
+													<td class="text-center align-middle">3212313213123</td>
+													<td class="text-center align-middle">
+														<button class="btn btn-primary rounded enable-node">Enable</button>
+													</td>
+												</tr>
+												 -->
+											</tbody>
+										</table>
+									</div>
+									<div class="modal-footer">
+										<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+									</div>
+								</div>
+							</div>
+						</div>	
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
 </div>
 
 <div class="notif">
-	<div class="alert alert-dismissible alert-danger fade rounded d-none" id="errorToast">
+	<div class="alert alert-dismissible alert-danger fade rounded d-none" style="z-index:9999999" id="errorToast">
 		<div class="loading" style="background-color: #FF775C;"></div>
 		<button type="button" class="btn-close" data-dismiss="alert"></button>
 		<strong>Error!</strong> <span class="msg"></span>
 	</div>
-	<div class="alert alert-dismissible alert-success fade rounded  d-none" id="successToast">
+	<div class="alert alert-dismissible alert-success fade rounded  d-none" style="z-index:9999999" id="successToast">
 		<div class="loading" style="background-color: #7FFF7F;"></div>
 		<button type="button" class="btn-close" data-dismiss="alert"></button>
 		<strong>Success!</strong> <span class="msg"></span>
@@ -83,15 +130,17 @@
 	var unregCircle = false;
 	var mymap = L.map('mapid').setView([3.146450, 101.711250], 13);
 
-	L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
-		maxZoom: 18,
-		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-		id: 'mapbox/streets-v11',
-		tileSize: 512,
-		zoomOffset: -1
-	}).addTo(mymap);
-	
+	function addTile(){
+		L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+			maxZoom: 18,
+			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+				'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+			id: 'mapbox/streets-v11',
+			tileSize: 512,
+			zoomOffset: -1
+		}).addTo(mymap);
+	}	
+
 	function onMapClick(e) {
 		$("#form-h").text("Add a new Node");
 		$("#btnUpdate").addClass("d-none");
@@ -163,8 +212,13 @@
 			success: function(data){     
 				json = data['data'][0];
 				if(json['status']){
-					$('#lblError').text("Invalid Node ID!");
-					$('#lblError').removeClass("d-none");
+					showAlert(2, "Invalid Operation!");
+					setFields("","","","","null");
+					$(".invalid-feedback").addClass("d-none");
+					$("#btnUpdate").addClass("d-none");
+					$("#btnDisable").addClass("d-none");
+					$("#btnSubmit").addClass("d-none");
+					$("#form-h").text("Perform an action to start");
 				}
 				else{
 					id = json['id'];
@@ -183,6 +237,8 @@
 		targetCircle = e.target;
         mymap.on('mousemove', function () {
         	targetCircle.setLatLng(e.latlng);
+			$('#txtNodeLon').val(e.latlng.lng);
+			$('#txtNodeLat').val(e.latlng.lat);
         });
     }; 
 	
@@ -226,10 +282,73 @@
 			success: function(data){     
 				json = data['data'][0];
 				if(json['status']==1){
-					showAlert(1, "Node successfully registered.")
+					var msg;
+					if(method==1){msg = "Node successfully registered."}else if(method==2){msg = "Node successfully updated."}
+					showAlert(1, msg);
+					refreshmap();
+				}
+				else if(json['status']==-1 && method == 2){
+					showAlert(2, "Invalid Operation!");
+					setFields("","","","","null");
+					$(".invalid-feedback").addClass("d-none");
+					$("#btnUpdate").addClass("d-none");
+					$("#btnDisable").addClass("d-none");
+					$("#btnSubmit").addClass("d-none");
+					$("#form-h").text("Perform an action to start");
 				}
 			}     
 		});
+	}
+
+	function disableNode(type, id){
+		var ops;
+		if(type==1){ops=4}else if(type==2){ops=1}
+		$.ajax({
+			headers: {
+				'X-CSRFTOKEN': '{{ csrf_token }}'
+			},
+			type: "PATCH",
+			url: "nodes/api/manageNode",
+			dataType:'json',
+			data: {
+				"id": id,
+				"ops": ops
+			},
+			success: function(data){     
+				json = data['data'][0];
+				if(json['status']==1){
+					var msg;
+					if(type==1){
+						msg = "Node successfully disabled."
+						setFields("","","","","null");
+						$(".invalid-feedback").addClass("d-none");
+						$("#btnUpdate").addClass("d-none");
+						$("#btnDisable").addClass("d-none");
+						$("#btnSubmit").addClass("d-none");
+						$("#form-h").text("Perform an action to start");
+						refreshmap();
+						fetchNodeList(2);
+					}
+					else if(type==2){
+						msg = "Node successfully reactivated.";
+						refreshmap();
+					}
+					showAlert(1, msg);
+				}
+				else if(json['status']==-1 && method == 2){
+					showAlert(2, "Invalid Operation!");
+					setFields("","","","","null")
+				}
+			}     
+		});
+	}
+	
+	function refreshmap(){
+		mymap.eachLayer(function (layer) {
+			mymap.removeLayer(layer);
+		});
+		addTile();
+		fetchNodeList(1);
 	}
 
 	function validateInput(){
@@ -297,21 +416,53 @@
 		}, 2000);
 	}
 
-	$(document).ready(function(){
+	function fetchNodeList(type){
+		var fetchtype;
+		var data = {};
+		if(type==1){fetchtype = "active_node"}else if(type==2){fetchtype = "disabled_node"}
+		data[fetchtype]=""
 		$.ajax({
 			type: "GET",
 			url: "nodes/api/manageNode",
 			dataType:'json',
+			data:data,
 			success: function(data){     
-				arr = data['data']
-				arr.forEach(function(item, index){
-					var lat = item['lat'];
-					var lon = item['lon'];
-					var id = item['id'];
-					createCircle(lat, lon, id);
-				});
+				if(type==1){
+					arr = data['data'];
+
+					arr.forEach(function(item, index){
+						var lat = item['lat'];
+						var lon = item['lon'];
+						var id = item['id'];
+						createCircle(lat, lon, id);
+					});
+				}
+				else if(type==2){
+					arr = data['data']
+					$('#disabledNodeTable tbody').empty();
+					arr.forEach(function(item, index){
+						var html_str;
+						html_str = '<tr><td class="text-center align-middle disabled-node-id">';1
+						html_str = html_str + item['id'];
+						html_str = html_str + '</td><td class="text-center align-middle">';
+						html_str = html_str + item['dsc'];	
+						html_str = html_str + '</td><td class="text-center align-middle">';
+						html_str = html_str + item['lat'];	
+						html_str = html_str + '</td><td class="text-center align-middle">';
+						html_str = html_str + item['lon'];	
+						html_str = html_str + '</td><td class="text-center align-middle">';
+						html_str = html_str + '<button class="btn btn-primary rounded enable-node">Enable</button></td></tr>';
+						$('#disabledNodeTable tbody').append(html_str);
+					});
+				}
+				
 			}     
 		});
+	}
+
+	$(document).ready(function(){
+		refreshmap();
+		fetchNodeList(2);
 		setFields("","","","","null");
 		mymap.on('mouseup',function(e){
 			mymap.removeEventListener('mousemove');
@@ -323,6 +474,15 @@
 		$("#btnUpdate").click(function(){
 			submitNodeForm(2);
 		})
+		$("#btnDisable").click(function(){
+			id = $('#txtNodeID').val();
+			disableNode(1, id);
+		})
+		$(document).on('click','.enable-node',function(){
+			id=$(this).parent().siblings(".disabled-node-id").html();
+			$(this).parent().parent().remove();
+			disableNode(2, id);
+		});
 	});
 
 </script>

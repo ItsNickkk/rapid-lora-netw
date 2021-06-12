@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse, QueryDict
 from django.db.models import Q
 from django.db import IntegrityError
+from django.core.exceptions import *
 from main.models import dim_node, dim_node_status
 
 def home(request):
@@ -13,36 +14,38 @@ def manageNode(request):
 	node_status = dim_node_status.objects
 	json = {"data":[]}
 	if request.method == 'GET':
-		if 'node_id' in request.GET:
+		if 'node_id' in request.GET: # Get selected node by ID
 			try:
 				dict = {}
-				reqNodeID = Q(id=request.GET.get('node_id'))
+				reqNodeID = Q(pk=request.GET.get('node_id'))
 				node = nodes.filter(reqNodeID)[0]
 				dict["id"] = node.id
 				dict["lat"] = node.node_lat
 				dict["lon"] = node.node_lon
 				dict["dsc"] = node.node_desc
 				dict["stat"] = node.node_status_id
-				dict["statdesc"] = node_status.select_related().filter(id = node.id)[0].status
 				json["data"].append(dict)
 			except IndexError:
 				dict = {}
 				dict["status"] = -1
 				json["data"].append(dict)
-		if 'latest_id' in request.GET:
+		if 'latest_id' in request.GET: # Get latest Node ID
 			dict={}
 			id = nodes.order_by('-id')[0].id
 			dict["latest_id"]=id
 			json['data'].append(dict)
-		else:
+		else: # Get a list of Node
 			for node in nodes:
+				if 'active_node' in request.GET and node.node_status_id is 4: # Get a list of active node
+					continue
+				elif 'disabled_node' in request.GET and node.node_status_id is not 4: # Get a list of disabled node
+					continue
 				dict = {}
 				dict["id"] = node.id
 				dict["lat"] = node.node_lat
 				dict["lon"] = node.node_lon
 				dict["dsc"] = node.node_desc
 				dict["stat"] = node.node_status_id
-				dict["statdesc"] = node_status.select_related().filter(id = node.id)[0].status
 				json["data"].append(dict)
 	elif request.method == 'POST':
 		try:
@@ -60,17 +63,24 @@ def manageNode(request):
 			pass
 	elif request.method == 'PATCH':
 		try:
-			dict={}
 			data = QueryDict(request.body)
-			id = data['id']
+			dict={}
+			id = data.get('id')
 			node = nodes.get(pk=id)
-			node.node_lon = data['lon']
-			node.node_lat = data['lat']
-			node.node_desc = data['desc']
-			node.node_status_id = data['stat']
+			if data.get('ops'):
+				node.node_status_id = data.get('ops')
+			else:
+				node.node_lon = data.get('lon')
+				node.node_lat = data.get('lat')
+				node.node_desc = data.get('desc')
+				node.node_status_id = data.get('stat')
 			node.save()
 			dict['status'] = 1
 			json["data"].append(dict)
-		except Exception:
+		except ObjectDoesNotExist:
+			dict = {}
+			dict["status"] = -1
+			json["data"].append(dict)
 			pass
+	
 	return JsonResponse(json)

@@ -18,3 +18,8 @@
     position: absolute;
     border-radius: 5px;
 }
+
+#btnFilter{
+	text-decoration: none;
+	color:white;
+}

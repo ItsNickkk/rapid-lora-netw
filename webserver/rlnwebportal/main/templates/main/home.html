@@ -2,29 +2,368 @@
 {% load static %}
 
 {% block content %}
+<div class="container-fluid">
+	<div class="row pt-4">
+		<div class="col-lg-10 offset-lg-1">
+			<h1>Entries</h1>
+		</div>
+	</div>
+	<div class="row pt-1">
+		<div class="col-lg-10 offset-lg-1">
+			<div class="row">
+				<div class="col">
+					<!-- <a href="#" id="btnFilter"><i class="fa fa-filter" aria-hidden="true"></i> SEARCH FILTER  <i class="fa fa-chevron-right toggle-filter"></i></a> -->
+				</div>
+			</div>
+			<div class="row filter-exp">
+				<div class="col pt-3" style="display: none;">
+					<div class="row">
+						<div class="col">
+							ID: <br/><input type="text" class="form-control"/> 
+						</div>
+						<div class="col">
+							Name: <br/><input type="text" class="form-control"/> 
+						</div>
+						<div class="col-lg">
+							Address: <br/><input type="text" class="form-control"/> 
+						</div>
+						<div class="col-lg">
+							Status: 
+							<select class="form-control">
+								<option value="1">Incomplete</option>
+								<option value="2">In Progress</option>
+								<option value="3">Completed</option>
+							</select>
+						</div>
+					</div>
+					<div class="row mt-3">
+						<div class="col">
+							<button type="button" class="btn btn-primary">Apply Filter</button>
+							<button type="button" class="btn btn-danger ml-4">Clear Filter</button>
+						</div>	
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row pt-4">
+		<div class="col-lg-10 offset-lg-1">
+			<h3>Ongoing rescues</h3>
+			<table class="table table-hover" id="entriesTable">
+				<thead>
+					<tr>
+						<th scope="col" class="text-center">ID</th>
+						<th scope="col" class="text-center">Name</th>
+						<th scope="col" class="text-center">Address</th>
+						<th scope="col" class="text-center">Datetime</th>
+						<th scope="col" class="text-center">Status</th>
+						<th scope="col" class="text-center">Node ID</th>
+					</tr>
+				</thead>
+				<tbody class="template-ong-cont">
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="row pt-4">
+		<div class="col-lg-10 offset-lg-1">
+			<h3>Completed rescues</h3>
+			<table class="table table-hover" id="entriesTable">
+				<thead>
+					<tr>
+						<th scope="col" class="text-center">ID</th>
+						<th scope="col" class="text-center">Name</th>
+						<th scope="col" class="text-center">Address</th>
+						<th scope="col" class="text-center">Datetime</th>
+						<th scope="col" class="text-center">Status</th>
+						<th scope="col" class="text-center">Node ID</th>
+					</tr>
+				</thead>
+				<tbody class="template-comp-cont">
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+<div class="notif">
+	<div class="alert alert-dismissible alert-danger fade rounded d-none" style="z-index:9999999" id="errorToast">
+		<div class="loading" style="background-color: #FF775C;"></div>
+		<button type="button" class="btn-close" data-dismiss="alert"></button>
+		<strong>Error!</strong> <span class="msg"></span>
+	</div>
+	<div class="alert alert-dismissible alert-success fade rounded  d-none" style="z-index:9999999" id="successToast">
+		<div class="loading" style="background-color: #7FFF7F;"></div>
+		<button type="button" class="btn-close" data-dismiss="alert"></button>
+		<strong>Success!</strong> <span class="msg"></span>
+	</div>
+</div>
+<script>
+	$(document).ready(function(){
+		$(document).on('click','.entry-listing',function(event){
+			$(this).next('tr').children().children('div').slideToggle();
+		})
+		$('#btnFilter').click(function(){
+			$(this).children('.toggle-filter').toggleClass("fa-chevron-right");
+			$(this).children('.toggle-filter').toggleClass("fa-chevron-down");
+			$(this).parent().parent().siblings('.filter-exp').children('div').slideToggle();
+		})
+		fetchEntries();
+		$("body").tooltip({selector: '[data-toggle="tooltip"]'});
+		$(document).on('click','.btnUpdate',function(event){
+			id = $(this).siblings('span').html();
+			if(confirm("Are you sure you want to update status of ID: "+id+"?")){
+				value = $(this).parent().siblings().children('select').find(":selected").val();
+				updateEntryStatus(id, value);
+			}
+		})
+	})
 
-<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
-    Launch demo modal
-  </button>
-  
-  <!-- Modal -->
-  <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          ...
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary">Save changes</button>
-        </div>
-      </div>
-    </div>
-  </div>
+	function fetchEntries(filter){
+		if(!filter){
+			$.ajax({
+			type: "GET",
+			url: "api/manageEntries",
+			dataType:'json',
+			success: function(data){
+				if(!data['status']){
+					recv_arr = data['data'];
+					ongoing_arr = [];
+					completed_arr = [];
+					recv_arr.forEach(function(item, index){
+						console.log(item['node']);
+						var post = {
+							id: item['id'],
+							name: item['name'],
+							address: item['address'],
+							datetime: item['datetime'],
+							status: item['status'],
+							nodeid: JSON.stringify(item['node']),
+							hpno: item['hpno'],
+							occupants: item['occupants'],
+							danger: item['danger'],
+							hug: item['hug'],
+							water: item['water'],
+							firstaid: item['firstaid'],
+						}
+						if(item['status'] != "Completed"){
+							ongoing_arr.push(post);
+						}
+						else{
+							completed_arr.push(post);
+						}
+					});
+					$.addTemplateFormatter({
+						TFFormatter : function(value, template){
+							if(value==false){
+								return "No"
+							}
+							else if(value == true){
+								return "Yes"
+							}
+						},
+						statusFormatter : function(value, template){
+							if (value == "In Progress"){
+								return "<span class='text-warning'>In Progress</span>"
+							}
+							else if (value == "Completed"){
+								return "<span class='text-success'>Completed</span>"
+							}
+							else if (value == "Incomplete"){
+								return "<span class='text-danger'>Incomplete</span>"
+							}
+						},
+						tooltipFormatter : function(value, template){
+							var json = JSON.parse(value);
+							var title = "Lon: <span>"+json['node_lon']+"</span></br>Lat: <span>"+json['node_lat']+"</span></br>Desc: <span>"+json['node_desc']+"</span></br>"
+							return "<span data-toggle='tooltip' title='"+title+"'' data-html='true'>"+json['id']+"</span>";
+						}
+					});
+					updateTables();
+				}
+			}     
+		});
+		}
+	}
+
+	function updateTables(){
+		$(".template-ong-cont").loadTemplate("#entry-template", ongoing_arr);
+		$(".template-comp-cont").loadTemplate("#entry-template", completed_arr);
+	}
+
+	function showAlert(type, message){
+		if(type==1){
+			elem = $('#successToast');
+		}
+		else{
+			elem = $('#errorToast');
+		}
+		elem.addClass("show");
+		elem.removeClass("d-none");
+		bar = elem.children(".loading");
+		elem.children(".msg").html(message);
+		loading(bar);
+		setTimeout(function(){
+			elem.removeClass("show");
+			elem.removeClass("d-none");
+		}, 2000);
+	}
+
+	function loading(elem) {
+		var i = 0;
+		if (i == 0) {
+			i = 1;
+			var width = 1;
+			var id = setInterval(function(){
+				width++;
+				$('.loading').css("width", width+"%");
+				if(width >= 100){
+					clearInterval(id);
+					i=0;
+				}
+			}, 15);
+		}
+	}
+
+	function updateEntryStatus(id, value){
+		$.ajax({
+			headers: {
+				'X-CSRFTOKEN': '{{ csrf_token }}'
+			},
+			type: "PATCH",
+			url: "api/manageEntries",
+			dataType:'json',
+			data:{
+				id: id,
+				status: value
+			},
+			success: function(data){
+				resp = data['data'];
+				if(resp[0]['status'] == 1){
+					fetchEntries();
+					showAlert(1, "Status updated successfully!")
+				}
+			}
+		});
+	}
+</script>
+<script type="text/html" id="entry-template">
+	<tr class="entry-listing">
+		<td class="text-center align-middle" data-content="id"></td>
+		<td class="text-center align-middle" data-content="name"></td>
+		<td class="text-center align-middle" data-content="address"></td>
+		<td class="text-center align-middle" data-content="datetime"></td>
+		<td class="text-center align-middle" data-content="status" data-format="statusFormatter"></td>
+		<td class="text-center align-middle" data-content="nodeid" data-format="tooltipFormatter"></td>
+	</tr>
+	<tr>
+		<td colspan="6" class="p-0">
+			<div class="container-fluid" style="display:none">
+				<div class="row my-3">
+					<div class="col-lg">
+						<div class="row">
+							<div class="col-4">
+								HP Number
+							</div>
+							<div class="col" data-content="hpno">
+							</div>
+						</div>
+					</div>
+					<div class="col-lg">
+						<div class="row mt-lg-0 mt-3">
+							<div class="col-4">
+								Occupants
+							</div>
+							<div class="col" data-content="occupants">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row my-3">
+					<div class="col-lg">
+						<div class="row">
+							<div class="col-4">
+								Danger
+							</div>
+							<div class="col" data-content="danger" data-format="TFFormatter">
+							</div>
+						</div>
+					</div>
+					<div class="col-lg">
+						<div class="row mt-lg-0 mt-3">
+							<div class="col-4">
+								Water
+							</div>
+							<div class="col" data-content="water" data-format="TFFormatter">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row my-3">
+					<div class="col-lg">
+						<div class="row">
+							<div class="col-4">
+								Hug
+							</div>
+							<div class="col" data-content="hug" data-format="TFFormatter">
+							</div>
+						</div>
+					</div>
+					<div class="col-lg">
+						<div class="row mt-lg-0 mt-3">
+							<div class="col-4">
+								First Aid
+							</div>
+							<div class="col" data-content="firstaid" data-format="TFFormatter">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-lg-6">
+						<div class="row">
+							<div class="col-lg-4">
+								Mark entry status as:
+							</div>
+							<div class="col mt-lg-0 mt-3 mb-3">
+								<select class="form-control">
+									<option value="1">Incomplete</option>
+									<option value="2">In Progress</option>
+									<option value="3">Completed</option>
+								</select>
+							</div>
+							<div class="col mt-lg-0 mt-3 mb-3">
+								<button type="button" class="btn btn-primary btnUpdate">Update</button>
+								<span data-content='id' class="d-none"></span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</td>
+	</tr>
+</script>
+<!-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+	Launch demo modal
+</button>
+
+
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+			<h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+			<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+			</button>
+			</div>
+			<div class="modal-body">
+			...
+			</div>
+			<div class="modal-footer">
+			<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+			<button type="button" class="btn btn-primary">Save changes</button>
+			</div>
+		</div>
+	</div>
+</div> -->
 {% endblock content %}
