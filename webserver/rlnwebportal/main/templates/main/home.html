@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+<script src="{% static 'js/mqtt.js' %}" type="text/javascript"></script>
 <div class="container-fluid">
 	<div class="row pt-4">
 		<div class="col-lg-10 offset-lg-1">
@@ -48,7 +50,8 @@
 	</div>
 	<div class="row pt-4">
 		<div class="col-lg-10 offset-lg-1">
-			<h3>Ongoing rescues</h3>
+			<h3 class="align-middle">Ongoing rescues</h3>
+			<button class="btn btn-primary mt-3 refreshbtn" disabled onclick="updateTables()">Refresh</button><br/><span class="text-muted pending-msg">You have <span class="pending-count">0</span> pending changes. <span class="d-none pending-msg-warn">Click "refresh" to update your view.</span></span>
 			<table class="table table-hover" id="entriesTable">
 				<thead>
 					<tr>
@@ -98,25 +101,49 @@
 	</div>
 </div>
 <script>
+	var ongoing_arr = [];
+	var completed_arr = [];
+	var nodelist = {};
+	var pendingUpd = 0;
+	var selfUpdateJSON;
+	
 	$(document).ready(function(){
 		$(document).on('click','.entry-listing',function(event){
 			$(this).next('tr').children().children('div').slideToggle();
 		})
-		$('#btnFilter').click(function(){
-			$(this).children('.toggle-filter').toggleClass("fa-chevron-right");
-			$(this).children('.toggle-filter').toggleClass("fa-chevron-down");
-			$(this).parent().parent().siblings('.filter-exp').children('div').slideToggle();
-		})
-		fetchEntries();
-		$("body").tooltip({selector: '[data-toggle="tooltip"]'});
 		$(document).on('click','.btnUpdate',function(event){
 			id = $(this).siblings('span').html();
 			if(confirm("Are you sure you want to update status of ID: "+id+"?")){
 				value = $(this).parent().siblings().children('select').find(":selected").val();
 				updateEntryStatus(id, value);
 			}
+		});
+		$('#btnFilter').click(function(){
+			$(this).children('.toggle-filter').toggleClass("fa-chevron-right");
+			$(this).children('.toggle-filter').toggleClass("fa-chevron-down");
+			$(this).parent().parent().siblings('.filter-exp').children('div').slideToggle();
 		})
+		fetchEntries();
+		fetchNodes();
+		MQTTsetParam("192.168.0.22", 9001);
+		MQTTconnect();
+		
+		$("body").tooltip({selector: '[data-toggle="tooltip"]'});
 	})
+	
+	function fetchNodes(){
+		$.ajax({
+			type: "GET",
+			url: "nodes/api/manageNode",
+			dataType:'json',
+			success: function(data){
+				data['data'].forEach(function(item, index){
+					var id = item['id'];
+					nodelist[id] = item;
+				})
+			}
+		});
+	}
 
 	function fetchEntries(filter){
 		if(!filter){
@@ -130,12 +157,18 @@
 					ongoing_arr = [];
 					completed_arr = [];
 					recv_arr.forEach(function(item, index){
-						console.log(item['node']);
+						currentdate = new Date(item['datetime']*1000); 
+						var datetime =  currentdate.getDate() + "/"
+										+ (currentdate.getMonth()+1)  + "/" 
+										+ currentdate.getFullYear() + " "
+										+ currentdate.getHours() + ":"  
+										+ currentdate.getMinutes() + ":" 
+										+ currentdate.getSeconds();
 						var post = {
 							id: item['id'],
 							name: item['name'],
 							address: item['address'],
-							datetime: item['datetime'],
+							datetime: datetime,
 							status: item['status'],
 							nodeid: JSON.stringify(item['node']),
 							hpno: item['hpno'],
@@ -145,7 +178,7 @@
 							water: item['water'],
 							firstaid: item['firstaid'],
 						}
-						if(item['status'] != "Completed"){
+						if(item['status'] != 3){
 							ongoing_arr.push(post);
 						}
 						else{
@@ -154,40 +187,55 @@
 					});
 					$.addTemplateFormatter({
 						TFFormatter : function(value, template){
-							if(value==false){
+							if(value==false || value == null){
 								return "No"
 							}
-							else if(value == true){
+							else if(value == true || value == 1){
 								return "Yes"
 							}
 						},
 						statusFormatter : function(value, template){
-							if (value == "In Progress"){
+							if (value == "2"){
 								return "<span class='text-warning'>In Progress</span>"
 							}
-							else if (value == "Completed"){
+							else if (value == "3"){
 								return "<span class='text-success'>Completed</span>"
 							}
-							else if (value == "Incomplete"){
+							else if (value == "1"){
 								return "<span class='text-danger'>Incomplete</span>"
 							}
 						},
 						tooltipFormatter : function(value, template){
 							var json = JSON.parse(value);
-							var title = "Lon: <span>"+json['node_lon']+"</span></br>Lat: <span>"+json['node_lat']+"</span></br>Desc: <span>"+json['node_desc']+"</span></br>"
+							var title = "Lon: <span>"+json['lon']+"</span></br>Lat: <span>"+json['lat']+"</span></br>Desc: <span>"+json['dsc']+"</span></br>"
 							return "<span data-toggle='tooltip' title='"+title+"'' data-html='true'>"+json['id']+"</span>";
 						}
 					});
-					updateTables();
 				}
+				updateTables();
 			}     
 		});
 		}
 	}
 
+	function makePending(){
+		pendingUpd = pendingUpd + 1;
+		$(".pending-msg").removeClass("text-muted");
+		$(".pending-msg").addClass("text-warning");
+		$(".pending-count").html(pendingUpd);
+		$(".pending-msg-warn").removeClass("d-none");
+		$(".refreshbtn").removeAttr("disabled");
+	}
+
 	function updateTables(){
 		$(".template-ong-cont").loadTemplate("#entry-template", ongoing_arr);
 		$(".template-comp-cont").loadTemplate("#entry-template", completed_arr);
+		pendingUpd = 0;
+		$(".pending-msg").addClass("text-muted");
+		$(".pending-msg").removeClass("text-warning");
+		$(".pending-count").html("0");
+		$(".pending-msg-warn").addClass("d-none");
+		$(".refreshbtn").attr("disabled","");
 	}
 
 	function showAlert(type, message){
@@ -242,6 +290,9 @@
 					fetchEntries();
 					showAlert(1, "Status updated successfully!")
 				}
+				msg = {"update": value, "id": id};
+				selfUpdateJSON = JSON.stringify(msg)
+				MQTTsend(selfUpdateJSON);
 			}
 		});
 	}

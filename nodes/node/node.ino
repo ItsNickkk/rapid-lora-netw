@@ -52,6 +52,7 @@ class CaptiveRequestHandler : public AsyncWebHandler {
 					for (int i = 0; i < form_param_size; i++) {
 						if (request->hasParam(F(params[i]))) {
 							AsyncWebParameter* p = request->getParam(F(params[i]));
+							strcat(getBuf, "\"");
 							strcat(getBuf, p->name().c_str());
 							strcat(getBuf, "\":\"");
 							strcat(getBuf, p->value().c_str());
