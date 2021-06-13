@@ -37,17 +37,37 @@ function onMessageArrived(msg){
 				buildArray(item, id);
 			}
 		});
+		makePending();
 	}
 	else{//This condition contain 'update' key
-		if(!msg.payloadString==selfUpdateJSON){
+		if(msg.payloadString!=selfUpdateJSON){
+			
 			var findID = item["id"];
-			res = ongoing_arr.find(obj => obj["id"] = findID);
-			res["status"] = item["update"]
-			index = ongoing_arr.findIndex(obj => obj["id"] = findID);
-			ongoing_arr[index] = res;
+			res = findEntry(ongoing_arr, findID);
+			if(typeof res == "undefined"){
+				res = findEntry(completed_arr, findID);
+			}
+			res[0]["status"] = item["update"];
+			if(res[0]["status"] == 3){
+				ongoing_arr.splice(res[1], 1);
+				completed_arr.push(res[0]);
+			}
+			else{
+				completed_arr.splice(res[1], 1);
+				ongoing_arr.push(res[0]);
+			}
+			makePending();
+			// if(res[0]["status"] != 3){
+			// 	ongoing_arr[index] = res;
+			// }
+			// else{
+			// 	ongoing_arr.splice(index, 1);
+			// 	completed_arr.push(res);
+			// }
+			// makePending();
 		}
 	}
-	makePending();
+	
 }
 
 function onConnect() {
@@ -101,4 +121,12 @@ function buildArray(item, id){
 		firstaid: item['fa'],
 	}
 	ongoing_arr.unshift(post);
+}
+
+function findEntry(arr, findID){
+	for (var i=0; i < arr.length; i++) {
+		if (arr[i].id == findID) {
+			return [arr[i],i];
+		}
+	}
 }
