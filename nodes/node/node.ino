@@ -48,7 +48,7 @@ class CaptiveRequestHandler : public AsyncWebHandler {
 					char getBuf[RH_MESH_MAX_MESSAGE_LEN];
 					size_t form_param_size = sizeof(params) / sizeof(params[0]);
 					getBuf[0] = '\0';
-					strcat(getBuf, "{\"");
+					strcat(getBuf, "{");
 					for (int i = 0; i < form_param_size; i++) {
 						if (request->hasParam(F(params[i]))) {
 							AsyncWebParameter* p = request->getParam(F(params[i]));
@@ -90,6 +90,14 @@ class CaptiveRequestHandler : public AsyncWebHandler {
 			server.on("/src/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest * request) {
 				request->send(SPIFFS, "/src/bootstrap.min.css", "text/css");
 			});
+         
+            server.on("/src/main.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+                request->send(SPIFFS, "/src/main.css", "text/css");
+            });
+            
+            server.on("/static/bg.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+                request->send(SPIFFS, "/static/bg.svg", "image/svg+xml");
+            });
 		}
 		virtual ~CaptiveRequestHandler() {}
 
@@ -134,7 +142,7 @@ void setup() {
 		rssi[n] = 0;
 	}
 	routeDiscover();
-	queueMsg = xQueueCreate(1, RH_MESH_MAX_MESSAGE_LEN);
+	queueMsg = xQueueCreate(10, RH_MESH_MAX_MESSAGE_LEN);
 	xTaskCreatePinnedToCore(tskCaptiveCode, "Captive Portal", 10000, NULL, 1, &tskCaptive, 1);
 	xTaskCreatePinnedToCore(tskLoraCode, "LoRa comm", 10000, NULL, 1, &tskLora, 0);
 }
@@ -268,7 +276,8 @@ void routeDiscover() {
 
 
 void tskCaptiveCode( void * pvParameters ) {
-	const char *ssid = "Emergency Portal Node " + nodeID;
+	const char *ssid = "\xE2\x80\xBC Emergency Portal \xF0\x9F\x86\x98";
+    Serial.println(ssid);
 	WiFi.mode(WIFI_AP);
 	WiFi.softAP(ssid);
 	WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
@@ -295,11 +304,12 @@ void tskLoraCode( void * pvParameters ) {
 		TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
 		TIMERG0.wdt_feed = 1;
 		TIMERG0.wdt_wprotect = 0;
+        Serial.println(uxQueueMessagesWaiting(queueMsg));
 		if (millis() > nextLoRaTransmit && uxQueueMessagesWaiting(queueMsg) > 0) {
 			xQueueReceive(queueMsg, &buf, 0);
 			uint8_t error = manager->sendtoWait((uint8_t *)buf, strlen(buf), BASE_STATION_ID);
-			Serial.println(error);
-			nextLoRaTransmit = millis() + 2000;
+			Serial.println("Error Code: "+ error);
+			nextLoRaTransmit = millis() + 500;
 		}
 		uint8_t len = sizeof(recvBuf);
 		uint8_t from;
