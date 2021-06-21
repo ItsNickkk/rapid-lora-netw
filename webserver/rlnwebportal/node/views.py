@@ -16,14 +16,15 @@ def manageNode(request):
 	if request.method == 'GET':
 		if 'node_id' in request.GET: # Get selected node by ID
 			try:
-				dict = {}
 				reqNodeID = Q(pk=request.GET.get('node_id'))
 				node = nodes.filter(reqNodeID)[0]
-				dict["id"] = node.id
-				dict["lat"] = node.node_lat
-				dict["lon"] = node.node_lon
-				dict["dsc"] = node.node_desc
-				dict["stat"] = node.node_status_id
+				dict = {
+					"id": node.id,
+					"lat": node.node_lat,
+					"lon": node.node_lon,
+					"dsc": node.node_desc,
+					"stat": node.node_status.id
+				}
 				json["data"].append(dict)
 			except IndexError:
 				dict = {}
