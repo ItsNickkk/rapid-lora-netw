@@ -19,6 +19,7 @@
 #define EEPROM_SIZE 1
 #define N_NODES 4 //Change the number of nodes in this variable
 #define BASE_STATION_ID 1 //Change 
+#define STAT_LED 12
 
 const char *params[] = {"n", "add", "hp", "cnt", "dg", "wt", "fd", "hg"};
 //change the parameters based on what is sent from HTML form
@@ -90,14 +91,14 @@ class CaptiveRequestHandler : public AsyncWebHandler {
 			server.on("/src/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest * request) {
 				request->send(SPIFFS, "/src/bootstrap.min.css", "text/css");
 			});
-         
-            server.on("/src/main.css", HTTP_GET, [](AsyncWebServerRequest * request) {
-                request->send(SPIFFS, "/src/main.css", "text/css");
-            });
-            
-            server.on("/static/bg.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
-                request->send(SPIFFS, "/static/bg.svg", "image/svg+xml");
-            });
+
+			server.on("/src/main.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+				request->send(SPIFFS, "/src/main.css", "text/css");
+			});
+
+			server.on("/static/bg.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+				request->send(SPIFFS, "/static/bg.svg", "image/svg+xml");
+			});
 		}
 		virtual ~CaptiveRequestHandler() {}
 
@@ -119,7 +120,7 @@ void setup() {
 		Serial.println("An Error has occurred while mounting SPIFFS");
 		return;
 	}
-
+	pinMode(STAT_LED, OUTPUT);
 	Serial.print(F("Initialing Node with ID: "));
 	Serial.println(nodeID);
 
@@ -204,9 +205,8 @@ void getRouteInfoString(char *p, size_t len) {  // Create a JSON string from buf
 	strcat(p, "]");
 }
 
-void buildbuf(char *p, size_t len) {  // Create a JSON string from buffer containing route info
-	p[0] = '\0';
-	strcat(p, "dsa");
+void toggleStatus(bool cond) {
+	digitalWrite(STAT_LED, cond);
 }
 
 void printNodeInfo(uint8_t node, char *s) {
@@ -232,9 +232,20 @@ void routeDiscover() {
 		Serial.print(n);
 		Serial.print(F(":"));
 		Serial.println(buf);
-
-		uint8_t error = manager->sendtoWait((uint8_t *)buf, strlen(buf), n); //Broadcast message to other nearby nodes & cast the return into error message
-
+		uint8_t error;
+		if (n == BASE_STATION_ID) {
+			toggleStatus(true);
+			while (error != RH_ROUTER_ERROR_NONE) {
+				error = manager->sendtoWait((uint8_t *)buf, strlen(buf), n);
+				Serial.println("Attempting to communicate with base station");
+				delay(500);
+			}
+			Serial.println("Connection Established with base station");
+			toggleStatus(false);
+		}
+		else {
+			error = manager->sendtoWait((uint8_t *)buf, strlen(buf), n);
+		}
 		Serial.print(F("Send to node "));
 		Serial.print(n);
 		Serial.print(F(", "));
@@ -277,7 +288,7 @@ void routeDiscover() {
 
 void tskCaptiveCode( void * pvParameters ) {
 	const char *ssid = "\xE2\x80\xBC Emergency Portal \xF0\x9F\x86\x98";
-    Serial.println(ssid);
+	Serial.println(ssid);
 	WiFi.mode(WIFI_AP);
 	WiFi.softAP(ssid);
 	WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
@@ -304,21 +315,32 @@ void tskLoraCode( void * pvParameters ) {
 		TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
 		TIMERG0.wdt_feed = 1;
 		TIMERG0.wdt_wprotect = 0;
-        Serial.println(uxQueueMessagesWaiting(queueMsg));
 		if (millis() > nextLoRaTransmit && uxQueueMessagesWaiting(queueMsg) > 0) {
 			xQueueReceive(queueMsg, &buf, 0);
-			uint8_t error = manager->sendtoWait((uint8_t *)buf, strlen(buf), BASE_STATION_ID);
-			Serial.println("Error Code: "+ error);
+			uint8_t error;
+			toggleStatus(true);
+			while (error != RH_ROUTER_ERROR_NONE) {
+				error = manager->sendtoWait((uint8_t *)buf, strlen(buf), BASE_STATION_ID);
+				Serial.println("Attempting to communicate with base station");
+			}
+			toggleStatus(false);
 			nextLoRaTransmit = millis() + 500;
 		}
 		uint8_t len = sizeof(recvBuf);
 		uint8_t from;
 		if (manager->recvfromAckTimeout((uint8_t *)recvBuf, &len, 2000, &from)) {
 			recvBuf[len] = '\0'; // null terminate string
-			Serial.print("FROM ");
-			Serial.print(from);
-			Serial.print(":");
-			Serial.println(recvBuf);
+//			Serial.println(recvBuf);
+//            Serial.println(from);
+//			if(from == 1 && recvBuf == "ping"){
+//                char tempBuf[20];
+//                tempBuf[0] = '\0';
+//                strcat(tempBuf, "pong from ");
+//                sprintf(tempBuf+strlen(tempBuf),"%d" , nodeID);
+//                manager->sendtoWait((uint8_t *)tempBuf, strlen(buf), from);
+//                Serial.println(tempBuf);
+//			}
+//			
 			RHRouter::RoutingTableEntry *route = manager->getRouteTo(from);
 			if (route->next_hop != 0) {
 				rssi[route->next_hop - 1] = rf95.lastRssi();
