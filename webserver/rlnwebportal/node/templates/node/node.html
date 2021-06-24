@@ -183,10 +183,28 @@
 			fillOpacity: 0.5,
 			opacity: 0.5,
 			id: node_id,
-		}).addTo(mymap);
+		}).bindPopup("Node ID: "+ node_id)
+		.addTo(mymap);
 		for(i = 0; i<=len; i++){
 			clickCircle[i].addEventListener('click', onCircleClick);
-			clickCircle[i].addEventListener('mousedown', moveCircle);
+			clickCircle[i].addEventListener('mousedown', function(){
+				targetCircle = this;
+				mymap.on('mousemove', function (e) {
+					targetCircle.setLatLng(e.latlng);
+					mymap.dragging.disable();
+					$('#txtNodeLon').val(e.latlng.lng);
+					$('#txtNodeLat').val(e.latlng.lat);
+				});
+			});
+			clickCircle[i].addEventListener('mouseup', function(){
+				mymap.dragging.enable();
+			});
+			clickCircle[i].addEventListener('mouseover', function(){
+				this.openPopup();
+			});
+			clickCircle[i].addEventListener('mouseout', function(){
+				this.closePopup();
+			});
 		}
 	}
 

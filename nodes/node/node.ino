@@ -330,7 +330,7 @@ void tskLoraCode( void * pvParameters ) {
 		uint8_t from;
 		if (manager->recvfromAckTimeout((uint8_t *)recvBuf, &len, 2000, &from)) {
 			recvBuf[len] = '\0'; // null terminate string
-//			Serial.println(recvBuf);
+			Serial.println(recvBuf);
 //            Serial.println(from);
 //			if(from == 1 && recvBuf == "ping"){
 //                char tempBuf[20];
