@@ -7,7 +7,7 @@ from main.models import dim_node, dim_node_status
 
 def home(request):
 	node_status = dim_node_status.objects.all()
-	return render(request, 'node/node.html', {'node_status':node_status})
+	return render(request, 'node/node.html', {'node_status':node_status, "title":"Node Management"})
 
 def manageNode(request):
 	nodes = dim_node.objects.order_by('id')
@@ -23,7 +23,8 @@ def manageNode(request):
 					"lat": node.node_lat,
 					"lon": node.node_lon,
 					"dsc": node.node_desc,
-					"stat": node.node_status.id
+					"stat": node.node_status.id,
+					"is_base": node.is_base
 				}
 				json["data"].append(dict)
 			except IndexError:
@@ -41,12 +42,14 @@ def manageNode(request):
 					continue
 				elif 'disabled_node' in request.GET and node.node_status_id is not 4: # Get a list of disabled node
 					continue
-				dict = {}
-				dict["id"] = node.id
-				dict["lat"] = node.node_lat
-				dict["lon"] = node.node_lon
-				dict["dsc"] = node.node_desc
-				dict["stat"] = node.node_status_id
+				dict = {
+					"id": node.id,
+					"lat": node.node_lat,
+					"lon": node.node_lon,
+					"dsc": node.node_desc,
+					"stat": node.node_status.id,
+					"is_base": node.is_base
+				}
 				json["data"].append(dict)
 	elif request.method == 'POST':
 		try:
@@ -57,12 +60,13 @@ def manageNode(request):
 			node.node_lat = request.POST.get('lat')
 			node.node_desc = request.POST.get('desc')
 			node.node_status_id = request.POST.get('stat')
+			node.is_base = request.POST.get('bs')
 			node.save()
 			dict['status'] = 1
 			json["data"].append(dict)
 		except IntegrityError:
 			pass
-	elif request.method == 'PATCH':
+	elif request.method == 'PUT':
 		try:
 			data = QueryDict(request.body)
 			dict={}
@@ -75,6 +79,7 @@ def manageNode(request):
 				node.node_lat = data.get('lat')
 				node.node_desc = data.get('desc')
 				node.node_status_id = data.get('stat')
+				node.is_base = data.get('bs')
 			node.save()
 			dict['status'] = 1
 			json["data"].append(dict)

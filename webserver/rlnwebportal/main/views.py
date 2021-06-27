@@ -19,29 +19,42 @@ def manageEntries(request):
 			dict["latest_id"]=id
 			json['data'].append(dict)
 		else:
+			q = Q()
+			if 'entry_id' in request.GET:
+				q.add(Q(pk=request.GET.get('entry_id')), q.AND)
+			if 'name' in request.GET:
+				q.add(Q(name__icontains=request.GET.get('name')), q.AND)
+			if 'address' in request.GET:
+				q.add(Q(address__icontains=request.GET.get('address')), q.AND)
+			if 'status' in request.GET:
+				q.add(Q(status=request.GET.get('status')), q.AND)
+			ents = ents.filter(q)	
 			for entry in ents:
-				dict = {}
-				node_arr = {}
-				dict["id"] = entry.id
-				dict["name"] = entry.name
-				dict["address"] = entry.address
-				dict["hpno"] = entry.hpno
-				dict["occupants"] = entry.occupants
-				dict["danger"] = entry.danger
-				dict["water"] = entry.water
-				dict["food"] = entry.food
-				dict["hug"] = entry.hug
-				dict["status"] = entry.status_id
-				dict["datetime"] = entry.datetime.timestamp()
-				dict["firstaid"] = entry.firstaid
-				dict["node"] = node_arr
 				reqNodeID = Q(pk=entry.node_id)
 				node = nodes.filter(reqNodeID)[0]
-				node_arr["id"] = node.id
-				node_arr["lat"] = node.node_lat
-				node_arr["lon"] = node.node_lon
-				node_arr["status_id"] = node.node_status_id
-				node_arr["dsc"] = node.node_desc
+				node_arr = {
+					"id": node.id,
+					"lat": node.node_lat,
+					"lon": node.node_lon,
+					"status_id": node.node_status_id,
+					"desc": node.node_desc
+				}
+				dict = {
+					"id": entry.id,
+					"name": entry.name,
+					"address": entry.address,
+					"hpno": entry.hpno,
+					"occupants": entry.occupants,
+					"danger": entry.danger,
+					"water": entry.water,
+					"food": entry.food,
+					"hug": entry.hug,
+					"status": entry.status_id,
+					"datetime": entry.datetime.timestamp(),
+					"firstaid": entry.firstaid,
+					"node": node_arr
+				}
+				
 				json["data"].append(dict)
 	elif request.method == 'PATCH':
 		data = QueryDict(request.body)

@@ -10,6 +10,7 @@ class dim_node(models.Model):
     node_lon = models.FloatField()
     node_desc = models.CharField(max_length=20) #Short Description of the Node
     node_status = models.ForeignKey(dim_node_status, on_delete=models.CASCADE)
+    is_base = models.BooleanField()
 
 class dim_entry_status(models.Model):
     status = models.CharField(max_length=20)

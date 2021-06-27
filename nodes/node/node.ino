@@ -331,6 +331,7 @@ void tskLoraCode( void * pvParameters ) {
 		if (manager->recvfromAckTimeout((uint8_t *)recvBuf, &len, 2000, &from)) {
 			recvBuf[len] = '\0'; // null terminate string
 			Serial.println(recvBuf);
+// Deprecated code on pinging deployed node - refer to doc!
 //            Serial.println(from);
 //			if(from == 1 && recvBuf == "ping"){
 //                char tempBuf[20];
