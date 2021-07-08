@@ -4,8 +4,8 @@ from django.db.models import Q
 from main.models import entries, dim_entry_status, dim_node
 
 def home(request):
-
-	return render(request, 'main/home.html')
+	nodes = dim_node.objects.all()
+	return render(request, 'main/home.html', {'title': 'Entries', "nodes": nodes})
 
 def manageEntries(request):
 	json = {"data":[]}
@@ -28,6 +28,8 @@ def manageEntries(request):
 				q.add(Q(address__icontains=request.GET.get('address')), q.AND)
 			if 'status' in request.GET:
 				q.add(Q(status=request.GET.get('status')), q.AND)
+			if 'node' in request.GET:
+				q.add(Q(node_id=request.GET.get('node')), q.AND)	
 			ents = ents.filter(q)	
 			for entry in ents:
 				reqNodeID = Q(pk=entry.node_id)

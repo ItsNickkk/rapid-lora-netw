@@ -38,6 +38,15 @@
 								<option value="3">Completed</option>
 							</select>
 						</div>
+						<div class="col-lg">
+							Node: 
+							<select class="form-control" search="node" id="node-sel">
+								<option value="" selected></option>
+								{% for node in nodes %}
+									<option value="{{node.id}}">ID {{node.id}} - {{node.node_desc}}</option>
+								{% endfor %}
+							</select>
+						</div>
 					</div>
 					<div class="row mt-3">
 						<div class="col">
@@ -148,7 +157,8 @@
 
 	function searchFilter(){
 		filter={};
-		sel = $('#status-sel option:selected').val();
+		stat_sel = $('#status-sel option:selected').val();
+		node_sel = $('#node-sel option:selected').val();
 		$('.search-field').children().children('input').each(function(){
 			value = $(this).val();
 			if(value){
@@ -156,8 +166,11 @@
 				filter[key]=value;
 			}
 		});
-		if(sel){
-			filter["status"]=sel;
+		if(stat_sel){
+			filter["status"]=stat_sel;
+		}
+		if(node_sel){
+			filter["node"]=node_sel;
 		}
 		fetchEntries(filter)
 	}
@@ -166,7 +179,8 @@
 		$('.search-field').children().children('input').each(function(){
 			$(this).val("");
 		});
-		$('#status-sel >option:eq(0)').attr('selected', true);
+		$('#status-sel>option:eq(0)').prop('selected', true);
+		$('#node-sel>option:eq(0)').prop('selected', true);
 		fetchEntries();
 	}
 

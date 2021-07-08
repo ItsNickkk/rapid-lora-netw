@@ -23,7 +23,7 @@ def manageNode(request):
 					"lat": node.node_lat,
 					"lon": node.node_lon,
 					"dsc": node.node_desc,
-					"stat": node.node_status.id,
+					"stat": node.node_status_id,
 					"is_base": node.is_base
 				}
 				json["data"].append(dict)
@@ -38,16 +38,16 @@ def manageNode(request):
 			json['data'].append(dict)
 		else: # Get a list of Node
 			for node in nodes:
-				if 'active_node' in request.GET and node.node_status_id is 4: # Get a list of active node
+				if 'active_node' in request.GET and node.node_status_id is 3: # Get a list of active node
 					continue
-				elif 'disabled_node' in request.GET and node.node_status_id is not 4: # Get a list of disabled node
+				elif 'disabled_node' in request.GET and node.node_status_id is not 3: # Get a list of disabled node
 					continue
 				dict = {
 					"id": node.id,
 					"lat": node.node_lat,
 					"lon": node.node_lon,
 					"dsc": node.node_desc,
-					"stat": node.node_status.id,
+					"stat": node.node_status_id,
 					"is_base": node.is_base
 				}
 				json["data"].append(dict)

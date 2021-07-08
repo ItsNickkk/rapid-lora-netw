@@ -172,13 +172,13 @@
 				lng = e.latlng.lng;
 				if(!unregCircle){
 					lastID = null;
-					createCircle(lat, lng, id, false, false);
+					createCircle(lat, lng, id, false, 1);
 					unregCircle = true;
 				}
 				else{
 					mymap.removeLayer(clickCircle[len-1]);
 					clickCircle.pop();
-					createCircle(lat, lng, id, false, false);
+					createCircle(lat, lng, id, false, 1);
 				}
 				popup
 					.setLatLng(e.latlng)
@@ -189,11 +189,13 @@
 		});
 	}
 
-	function createCircle(lat, lng, node_id, active, is_base){
+	function createCircle(lat, lng, node_id, active, status, is_base){
 		len = clickCircle.length;
 		var color;
-		if(is_base){color = "#3D4C70"}else{color="#f07300"}
-		clickCircle[len] = L.circle([lat, lng],200,{
+		if(is_base){color = "#3D4C70"}else{color="#68D01E"}
+		console.log(status)
+		if(status==1){color="#f07300"}
+		clickCircle[len] = L.circle([lat, lng],900,{
 			color: color,
 			fillOpacity: 0.5,
 			opacity: 0.5,
@@ -346,7 +348,7 @@
 
 	function disableNode(type, id){
 		var ops;
-		if(type==1){ops=4}else if(type==2){ops=1}
+		if(type==1){ops=3}else if(type==2){ops=1}
 		$.ajax({
 			headers: {
 				'X-CSRFTOKEN': '{{ csrf_token }}'
@@ -482,7 +484,9 @@
 						var lon = item['lon'];
 						var id = item['id'];
 						var is_base = item['is_base'];
-						createCircle(lat, lon, id, true, is_base);
+						var status = item['stat'];
+						console.log(item);
+						createCircle(lat, lon, id, true, status, is_base);
 					});
 				}
 				else if(type==2){

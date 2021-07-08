@@ -1,13 +1,15 @@
 #include <RHRouter.h>
 #include <RHMesh.h>
 #include <RH_RF95.h>
-#define RH_HAVE_SERIAL
-#define BASE_STATION_ID 1 //Change 
+#include <EEPROM.h>
 #include <ArduinoJson.h>
 #include "soc/timer_group_struct.h"
 #include "soc/timer_group_reg.h"
 
-uint8_t nodeID = BASE_STATION_ID;
+#define RH_HAVE_SERIAL
+#define EEPROM_SIZE 1
+#define BASE_STATION_ID 1 //Change 
+
 char buf[RH_MESH_MAX_MESSAGE_LEN]; // Message Buffer
 
 TaskHandle_t tskRecv;
@@ -18,8 +20,18 @@ StaticJsonDocument<200> JsonData;
 
 void setup() {
 	Serial.begin(115200);
+    EEPROM.begin(EEPROM_SIZE);
+    uint8_t nodeID = EEPROM.read(0);
 	Serial.print(F("Initialing Node with ID: "));
 	Serial.println(nodeID);
+    while (nodeID != BASE_STATION_ID){
+        Serial.print("Expected ID: " + BASE_STATION_ID);
+        Serial.print(" Actual Acquired ID: " + nodeID);
+        Serial.println("The node ID does not matches the specified base station ID! Please verify these parameter according to the web portal!: ");
+        Serial.println("1) ID in EEPROM (initNode.ino)");
+        Serial.println("2) BASE_STATION_ID constant in receiver.ino");
+        delay(1000);
+    }
 
 	manager = new RHMesh(rf95, nodeID); // Initialize the node in mesh networking layer
 	if (!manager->init()) {
@@ -34,7 +46,6 @@ void setup() {
 	rf95.setCADTimeout(500);
 
 	xTaskCreatePinnedToCore(tskRecvCode, "Receiving incoming messages", 10000, NULL, 1, &tskRecv, 1);
-	xTaskCreatePinnedToCore(tskPingCode, "Ping", 10000, NULL, 1, &tskPing, 0);
 
 	Serial.println(F("RF95 setup successful!"));
 }
@@ -64,51 +75,5 @@ void tskRecvCode( void * pvParameters ) {
 			//          rssi[route->next_hop - 1] = rf95.lastRssi();
 			//      }
 		}
-	}
-}
-
-void tskPingCode( void * pvParameters ) {
-	Serial.print("Ping code running on core ");
-	Serial.println(xPortGetCoreID());
-	for (;;) {
-		TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-		TIMERG0.wdt_feed = 1;
-		TIMERG0.wdt_wprotect = 0;
-//		if (Serial.available()) {
-//			String temp = Serial.readString();
-//			char tempBuf[255];
-//			temp.toCharArray(tempBuf, sizeof(tempBuf));
-//			DeserializationError error = deserializeJson(JsonData, tempBuf);
-//			if (!error) {
-//				String type = JsonData["action"];
-//				if (type == "ping") {
-//					int destination_node = (int)JsonData["dest"];
-//					Serial.print("Ping Command to Node ");
-//					Serial.println(destination_node);
-//					char sendBuf[255] = "ping";
-//					uint8_t error=99;
-//					int i = 0;
-//                  Serial.println(error == RH_ROUTER_ERROR_NONE);
-//                  Serial.println(i);
-//                  Serial.println(error != RH_ROUTER_ERROR_NONE && i < 5);
-//					while (error != RH_ROUTER_ERROR_NONE && i < 5) {
-//                        error = manager->sendtoWait((uint8_t *)sendBuf, strlen(sendBuf), destination_node);
-//                        Serial.print("Pinging node ");
-//                        Serial.println(destination_node);
-//                        Serial.print("Try: ");
-//                        Serial.println(i+1);
-//                        i++;
-//					}
-//                    if(i>=4 && error != RH_ROUTER_ERROR_NONE){
-//                        Serial.println("Incoming=PING_FAILED");
-//                    }
-//				}
-//			}
-//			else {
-//				Serial.print(F("deserializeJson() failed: "));
-//				Serial.println(error.f_str());
-//			}
-//
-//		}
 	}
 }

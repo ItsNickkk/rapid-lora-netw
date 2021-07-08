@@ -111,7 +111,7 @@ function buildArray(item, id){
 		name: item['n'],
 		address: item['add'],
 		datetime: datetime,
-		status: "Incomplete",
+		status: "1",
 		nodeid: JSON.stringify(nodelist[item['node']]),
 		hpno: item['hp'],
 		occupants: item['cnt'],

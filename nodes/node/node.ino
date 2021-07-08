@@ -187,24 +187,6 @@ void updateRoutingTable() {
 	}
 }
 
-
-void getRouteInfoString(char *p, size_t len) {  // Create a JSON string from buffer containing route info
-	p[0] = '\0';
-	strcat(p, "[");
-	for (uint8_t n = 0; n < N_NODES; n++) {
-		strcat(p, "{\"n\":");
-		sprintf(p + strlen(p), "%d", routes[n]);
-		strcat(p, ",");
-		strcat(p, "\"r\":");
-		sprintf(p + strlen(p), "%d", rssi[n]);
-		strcat(p, "}");
-		if (n < N_NODES) {
-			strcat(p, ",");
-		}
-	}
-	strcat(p, "]");
-}
-
 void toggleStatus(bool cond) {
 	digitalWrite(STAT_LED, cond);
 }
@@ -226,7 +208,9 @@ void routeDiscover() {
 		if (n == nodeID) continue; // Ignore this loop if this is self loop
 
 		updateRoutingTable();
-		getRouteInfoString(buf, RH_MESH_MAX_MESSAGE_LEN);
+        buf[0] = '\0';
+        strcat(buf, "ping from node ");
+        sprintf(buf + strlen(buf), "%d", nodeID);
 
 		Serial.print(F("TO "));
 		Serial.print(n);
@@ -317,11 +301,11 @@ void tskLoraCode( void * pvParameters ) {
 		TIMERG0.wdt_wprotect = 0;
 		if (millis() > nextLoRaTransmit && uxQueueMessagesWaiting(queueMsg) > 0) {
 			xQueueReceive(queueMsg, &buf, 0);
-			uint8_t error;
+			uint8_t error = 99;
 			toggleStatus(true);
 			while (error != RH_ROUTER_ERROR_NONE) {
+                Serial.println("Attempting to communicate with base station");
 				error = manager->sendtoWait((uint8_t *)buf, strlen(buf), BASE_STATION_ID);
-				Serial.println("Attempting to communicate with base station");
 			}
 			toggleStatus(false);
 			nextLoRaTransmit = millis() + 500;
